@@ -63,23 +63,39 @@ function resize() {
 window.addEventListener("resize", resize);
 resize();
 
-// ----- Tracker setup -----
-async function bootTracker() {
-  try {
-    els.status.textContent = "웹캠 권한 요청 중...";
-    await tracker.start({ video: els.webcam, overlay: els.overlay });
-    const hadCal = tracker.loadCalibration();
-    els.status.textContent = hadCal
-      ? "이전 보정값을 불러왔습니다. 바로 시작하거나 다시 보정하세요."
-      : "보정을 진행한 뒤 게임을 시작하세요.";
-    els.btnStart.disabled = false;
-    els.btnCalibrate.disabled = false;
-  } catch (e) {
-    console.error(e);
-    els.status.textContent = "웹캠을 사용할 수 없습니다: " + e.message;
-  }
+// ----- Tracker setup (lazy: started on first user interaction so iOS Safari
+// reliably grants camera/autoplay permission). -----
+let trackerReady = false;
+let trackerStarting = null;
+
+async function ensureTracker() {
+  if (trackerReady) return true;
+  if (trackerStarting) return trackerStarting;
+  trackerStarting = (async () => {
+    try {
+      els.status.textContent = "웹캠 권한을 허용해 주세요...";
+      await tracker.start({ video: els.webcam, overlay: els.overlay });
+      const hadCal = tracker.loadCalibration();
+      els.status.textContent = hadCal
+        ? "이전 보정값 사용 중. 다시 보정하면 더 정확해요."
+        : "보정을 한 번 진행하면 더 정확해집니다.";
+      trackerReady = true;
+      return true;
+    } catch (e) {
+      console.error(e);
+      els.status.textContent = "웹캠을 사용할 수 없습니다: " + (e?.message || e);
+      throw e;
+    } finally {
+      trackerStarting = null;
+    }
+  })();
+  return trackerStarting;
 }
-bootTracker();
+
+// Hint user before they tap.
+els.status.textContent = "‘게임 시작’을 누르면 웹캠 권한 요청이 뜹니다.";
+els.btnStart.disabled = false;
+els.btnCalibrate.disabled = false;
 
 tracker.on(({ lane, norm, faceVisible }) => {
   // Update HUD gaze indicator (visual feedback).
@@ -118,7 +134,10 @@ function updateCalUI() {
   });
 }
 
-els.btnCalibrate.addEventListener("click", openCalibration);
+els.btnCalibrate.addEventListener("click", async () => {
+  try { await ensureTracker(); } catch { return; }
+  openCalibration();
+});
 els.btnCalCancel.addEventListener("click", () => els.calibrateScreen.classList.add("hidden"));
 els.btnCalCapture.addEventListener("click", () => {
   const step = CAL_STEPS[calStep];
@@ -135,7 +154,8 @@ els.btnCalCapture.addEventListener("click", () => {
 });
 
 // ----- Start / restart -----
-els.btnStart.addEventListener("click", () => {
+els.btnStart.addEventListener("click", async () => {
+  try { await ensureTracker(); } catch { return; }
   els.startScreen.classList.add("hidden");
   startGame();
 });

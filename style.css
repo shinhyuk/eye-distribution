@@ -37,6 +37,7 @@ html, body {
   align-items: flex-start;
   padding: 14px 18px;
   gap: 14px;
+  flex-wrap: wrap;
 }
 
 .hud-left {
@@ -296,9 +297,20 @@ html, body {
 }
 
 @media (max-width: 720px) {
-  .cam-wrap { width: 150px; height: 112px; }
-  .stat { padding: 6px 10px; min-width: 70px; }
-  .stat span:not(.label) { font-size: 18px; }
+  .hud { padding: 8px 10px; gap: 8px; }
+  .cam-wrap { width: 130px; height: 98px; }
+  .stat { padding: 5px 9px; min-width: 60px; border-radius: 9px; }
+  .stat .label { font-size: 9px; }
+  .stat span:not(.label) { font-size: 16px; }
   .panel { padding: 22px 20px; }
   .panel h1 { font-size: 28px; }
+  .stage { margin: 0 8px 8px; }
+  .howto { font-size: 13px; }
+}
+
+@media (max-width: 420px) {
+  .cam-wrap { width: 108px; height: 80px; }
+  #gaze-label { font-size: 9px; }
+  .stat { min-width: 52px; padding: 4px 7px; }
+  .stat span:not(.label) { font-size: 14px; }
 }
