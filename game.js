@@ -358,57 +358,68 @@ function render() {
 function drawSky(w, h) {
   const hor = horizonY();
   const sky = ctx.createLinearGradient(0, 0, 0, hor);
-  sky.addColorStop(0, "#0a1238");
-  sky.addColorStop(0.55, "#28346d");
-  sky.addColorStop(1, "#ff7a5c");
+  sky.addColorStop(0, "#080522");
+  sky.addColorStop(0.55, "#1a0d4a");
+  sky.addColorStop(1, "#5b1a78");
   ctx.fillStyle = sky;
   ctx.fillRect(0, 0, w, hor);
 
-  // distant sun
-  ctx.fillStyle = "rgba(255, 200, 130, 0.55)";
-  ctx.beginPath();
-  ctx.arc(w * 0.62, hor - 18, 36, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "rgba(255, 220, 170, 0.85)";
-  ctx.beginPath();
-  ctx.arc(w * 0.62, hor - 18, 22, 0, Math.PI * 2);
-  ctx.fill();
+  // distant horizon glow band
+  const haze = ctx.createLinearGradient(0, hor - 80, 0, hor + 8);
+  haze.addColorStop(0, "rgba(255, 60, 200, 0)");
+  haze.addColorStop(0.65, "rgba(255, 60, 200, 0.35)");
+  haze.addColorStop(1, "rgba(0, 240, 255, 0.55)");
+  ctx.fillStyle = haze;
+  ctx.fillRect(0, hor - 80, w, 88);
 
-  // stars (parallax-y)
+  // stars
   if (!drawSky.cache) {
-    drawSky.cache = Array.from({ length: 60 }, () => ({
-      x: Math.random(), y: Math.random() * 0.5, r: Math.random() * 1.3 + 0.3,
+    drawSky.cache = Array.from({ length: 70 }, () => ({
+      x: Math.random(), y: Math.random() * 0.6, r: Math.random() * 1.2 + 0.25,
+      tw: Math.random() * Math.PI * 2,
     }));
   }
-  ctx.fillStyle = "rgba(255,255,255,0.7)";
+  const t = performance.now() / 900;
   for (const s of drawSky.cache) {
-    ctx.globalAlpha = 0.35 + 0.5 * (1 - s.y * 2);
+    const a = 0.4 + 0.45 * Math.abs(Math.sin(s.tw + t * (0.7 + s.r)));
+    ctx.fillStyle = `rgba(220, 235, 255, ${a})`;
     ctx.beginPath();
     ctx.arc(s.x * w, s.y * hor, s.r, 0, Math.PI * 2);
     ctx.fill();
   }
-  ctx.globalAlpha = 1;
 }
 
 function drawGround(w, h) {
   const hor = horizonY();
   const grad = ctx.createLinearGradient(0, hor, 0, h);
-  grad.addColorStop(0, "#0d2a1f");
-  grad.addColorStop(1, "#06120d");
+  grad.addColorStop(0, "#0a0e26");
+  grad.addColorStop(0.6, "#06081a");
+  grad.addColorStop(1, "#02030a");
   ctx.fillStyle = grad;
   ctx.fillRect(0, hor, w, h - hor);
 
-  // grid lines on ground (extends from horizon outward).
-  ctx.strokeStyle = "rgba(74, 216, 255, 0.10)";
+  // perspective grid (horizontal + vertical) on ground.
+  ctx.strokeStyle = "rgba(0, 240, 255, 0.07)";
   ctx.lineWidth = 1;
-  const offset = (state.scrollZ * 0.5) % ROAD_SEGMENT;
+  const offset = state.scrollZ % ROAD_SEGMENT;
   for (let i = 0; i < 28; i++) {
     const z = i * ROAD_SEGMENT - offset;
-    if (z < -10) continue;
+    if (z < -5) continue;
     const y = projY(z);
     ctx.beginPath();
     ctx.moveTo(0, y);
     ctx.lineTo(w, y);
+    ctx.stroke();
+  }
+  // radial vertical lines (from vanishing point).
+  const cx = w / 2;
+  for (let i = -8; i <= 8; i++) {
+    if (i === 0) continue;
+    const x0 = cx;
+    const x1 = cx + i * (w * 0.12);
+    ctx.beginPath();
+    ctx.moveTo(x0, hor);
+    ctx.lineTo(x1, h);
     ctx.stroke();
   }
 }
@@ -417,15 +428,18 @@ function drawRoad(w, h) {
   const hor = horizonY();
   const cx = w / 2;
 
-  // Extend trapezoid below z=0 down to canvas bottom.
   const farTopY = hor;
-  const farTopHalf = 0.5;
+  const farTopHalf = 1;
   const groundHalf = TRACK_HALF_W;
   const bottomY = h;
   const bottomHalf = TRACK_HALF_W * (bottomY - hor) / Math.max(1, groundY() - hor);
 
-  // Asphalt fill (filled trapezoid extending past camera).
-  ctx.fillStyle = "#101737";
+  // Asphalt — dark with subtle inner gradient (cooler near horizon).
+  const asphalt = ctx.createLinearGradient(0, hor, 0, h);
+  asphalt.addColorStop(0, "#0c1126");
+  asphalt.addColorStop(0.5, "#0a0d20");
+  asphalt.addColorStop(1, "#080a18");
+  ctx.fillStyle = asphalt;
   ctx.beginPath();
   ctx.moveTo(cx - farTopHalf, farTopY);
   ctx.lineTo(cx + farTopHalf, farTopY);
@@ -434,108 +448,126 @@ function drawRoad(w, h) {
   ctx.closePath();
   ctx.fill();
 
-  // Rumble strips on each shoulder + dashed center divider.
+  // Subtle inner sheen near top of road.
+  const sheen = ctx.createLinearGradient(0, hor, 0, hor + 80);
+  sheen.addColorStop(0, "rgba(0, 240, 255, 0.12)");
+  sheen.addColorStop(1, "rgba(0, 240, 255, 0)");
+  ctx.fillStyle = sheen;
+  ctx.fillRect(cx - groundHalf, hor, groundHalf * 2, 90);
+
+  // Edge light strips — single soft cyan glow on each shoulder.
+  drawEdgeGlow(cx, hor, groundHalf, bottomHalf, bottomY);
+
+  // Center divider: a single continuous neon line with brightness pulse along its length.
+  drawCenterRail(cx, hor);
+
+  // Horizon kiss — thin bright line where road meets sky.
+  ctx.fillStyle = "rgba(180, 240, 255, 0.85)";
+  ctx.fillRect(cx - 1, hor - 0.5, 2, 1);
+  const horizonGlow = ctx.createLinearGradient(0, hor - 6, 0, hor + 6);
+  horizonGlow.addColorStop(0, "rgba(0, 240, 255, 0)");
+  horizonGlow.addColorStop(0.5, "rgba(0, 240, 255, 0.5)");
+  horizonGlow.addColorStop(1, "rgba(0, 240, 255, 0)");
+  ctx.fillStyle = horizonGlow;
+  ctx.fillRect(cx - 60, hor - 6, 120, 12);
+}
+
+function drawEdgeGlow(cx, hor, groundHalf, bottomHalf, bottomY) {
+  // Bright cyan rail line then soft outer halo on each side.
+  for (const side of [-1, 1]) {
+    // halo (drawn as thick semi-transparent line w/ many parallel offsets approximated by gradient strip).
+    const grad = ctx.createLinearGradient(cx + side * (groundHalf - 12), 0, cx + side * (groundHalf + 12), 0);
+    grad.addColorStop(0, "rgba(0, 240, 255, 0)");
+    grad.addColorStop(0.5, "rgba(0, 240, 255, 0.35)");
+    grad.addColorStop(1, "rgba(0, 240, 255, 0)");
+    ctx.fillStyle = grad;
+    // approximate a perspective strip by polygon
+    const fNear = 14;
+    const fFar = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(cx + side * (0 - fFar), hor);
+    ctx.lineTo(cx + side * (0 + fFar), hor);
+    ctx.lineTo(cx + side * (bottomHalf + fNear), bottomY);
+    ctx.lineTo(cx + side * (bottomHalf - fNear), bottomY);
+    ctx.closePath();
+    ctx.fill();
+
+    // crisp inner line
+    ctx.strokeStyle = "rgba(180, 240, 255, 0.9)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx + side * 0, hor);
+    ctx.lineTo(cx + side * bottomHalf, bottomY);
+    ctx.stroke();
+  }
+}
+
+function drawCenterRail(cx, hor) {
+  // Build dashed segments along z, in cyan with a moving bright pulse.
   const segOffset = state.scrollZ % ROAD_SEGMENT;
-  const segCount = 26;
+  const segCount = 28;
+  const t = performance.now() / 600;
 
   for (let i = 0; i < segCount; i++) {
     const zNear = i * ROAD_SEGMENT - segOffset;
-    const zFar = zNear + ROAD_SEGMENT;
-    if (zFar < -10) continue;
+    const zFar = zNear + ROAD_SEGMENT * 0.55; // dash:gap ≈ 55:45
+    if (zFar < -5) continue;
+
+    const sNear = projScale(Math.max(0, zNear));
+    const sFar = projScale(Math.max(0, zFar));
     const yNear = projY(Math.max(0, zNear));
     const yFar = projY(Math.max(0, zFar));
-    if (yFar > yNear - 0.4) continue; // skip degenerate
+    if (yFar > yNear - 0.5) continue;
 
-    const halfNear = TRACK_HALF_W * projScale(Math.max(0, zNear));
-    const halfFar = TRACK_HALF_W * projScale(Math.max(0, zFar));
-    const stripe = (i % 2 === 0);
+    const wNear = 5 * sNear;
+    const wFar = 5 * sFar;
 
-    // Outer rumble strips (red/white).
-    ctx.fillStyle = stripe ? "#ff5577" : "#ffffff";
-    // left rumble
+    // moving brightness pulse — closer dashes brighter, with a phase shift.
+    const phase = (i / segCount + t) % 1;
+    const pulse = 0.55 + 0.45 * Math.max(0, Math.cos((phase - 0.2) * Math.PI * 2));
+    ctx.fillStyle = `rgba(0, 240, 255, ${0.55 + 0.4 * pulse * sNear})`;
     ctx.beginPath();
-    ctx.moveTo(cx - halfFar - 6 * projScale(zFar), yFar);
-    ctx.lineTo(cx - halfNear - 6 * projScale(zNear), yNear);
-    ctx.lineTo(cx - halfNear, yNear);
-    ctx.lineTo(cx - halfFar, yFar);
+    ctx.moveTo(cx - wFar / 2, yFar);
+    ctx.lineTo(cx + wFar / 2, yFar);
+    ctx.lineTo(cx + wNear / 2, yNear);
+    ctx.lineTo(cx - wNear / 2, yNear);
     ctx.closePath();
     ctx.fill();
-    // right rumble
-    ctx.beginPath();
-    ctx.moveTo(cx + halfFar, yFar);
-    ctx.lineTo(cx + halfNear, yNear);
-    ctx.lineTo(cx + halfNear + 6 * projScale(zNear), yNear);
-    ctx.lineTo(cx + halfFar + 6 * projScale(zFar), yFar);
-    ctx.closePath();
-    ctx.fill();
-
-    // Asphalt tone alternation (subtle).
-    ctx.fillStyle = stripe ? "rgba(255,255,255,0.025)" : "rgba(0,0,0,0)";
-    ctx.beginPath();
-    ctx.moveTo(cx - halfFar, yFar);
-    ctx.lineTo(cx + halfFar, yFar);
-    ctx.lineTo(cx + halfNear, yNear);
-    ctx.lineTo(cx - halfNear, yNear);
-    ctx.closePath();
-    ctx.fill();
-
-    // Dashed center divider — only on stripe segments.
-    if (stripe) {
-      const wNear = 6 * projScale(Math.max(0, zNear));
-      const wFar = 6 * projScale(Math.max(0, zFar));
-      ctx.fillStyle = "#ffd24a";
-      ctx.beginPath();
-      ctx.moveTo(cx - wFar / 2, yFar);
-      ctx.lineTo(cx + wFar / 2, yFar);
-      ctx.lineTo(cx + wNear / 2, yNear);
-      ctx.lineTo(cx - wNear / 2, yNear);
-      ctx.closePath();
-      ctx.fill();
-    }
   }
-
-  // Extend rumble + asphalt past z=0 down to canvas bottom (linear).
-  ctx.strokeStyle = "#ff5577";
-  ctx.lineWidth = 6;
-  ctx.beginPath();
-  ctx.moveTo(cx - groundHalf, groundY());
-  ctx.lineTo(cx - bottomHalf, bottomY);
-  ctx.moveTo(cx + groundHalf, groundY());
-  ctx.lineTo(cx + bottomHalf, bottomY);
-  ctx.stroke();
-
-  // Soft horizon glow.
-  const glow = ctx.createLinearGradient(0, hor - 30, 0, hor + 30);
-  glow.addColorStop(0, "rgba(255, 180, 90, 0)");
-  glow.addColorStop(0.5, "rgba(255, 180, 90, 0.55)");
-  glow.addColorStop(1, "rgba(255, 180, 90, 0)");
-  ctx.fillStyle = glow;
-  ctx.fillRect(0, hor - 30, w, 60);
 }
 
 function drawScenery(w, h) {
-  // Roadside posts to enhance speed perception.
+  // Floating neon pylons alongside the track for speed perception.
   const segOffset = state.scrollZ % (ROAD_SEGMENT * 2);
-  for (let i = 0; i < 14; i++) {
+  for (let i = 0; i < 16; i++) {
     const z = i * ROAD_SEGMENT * 2 - segOffset;
-    if (z < 0 || z > 1800) continue;
+    if (z < 0 || z > 1900) continue;
     const s = projScale(z);
     const y = projY(z);
-    const halfW = (TRACK_HALF_W + 22) * s;
+    const halfW = (TRACK_HALF_W + 24) * s;
+    const cx = canvasW() / 2;
+    const colorTop = i % 2 === 0 ? "rgba(0, 240, 255," : "rgba(255, 60, 200,";
+    const tipColor = i % 2 === 0 ? "#a8f4ff" : "#ffb6e8";
 
-    const poleH = 28 * s;
-    const poleW = Math.max(1, 3 * s);
-    ctx.fillStyle = "rgba(74, 216, 255, 0.55)";
-    ctx.fillRect(canvasW() / 2 - halfW - poleW / 2, y - poleH, poleW, poleH);
-    ctx.fillRect(canvasW() / 2 + halfW - poleW / 2, y - poleH, poleW, poleH);
+    const poleH = 38 * s;
+    const poleW = Math.max(1, 2.4 * s);
+    // pole gradient
+    const grad = ctx.createLinearGradient(0, y - poleH, 0, y);
+    grad.addColorStop(0, colorTop + "0.85)");
+    grad.addColorStop(1, colorTop + "0.05)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(cx - halfW - poleW / 2, y - poleH, poleW, poleH);
+    ctx.fillRect(cx + halfW - poleW / 2, y - poleH, poleW, poleH);
 
-    // light tip
-    ctx.fillStyle = "#4ad8ff";
-    const tip = Math.max(1, 4 * s);
+    const tip = Math.max(1.2, 4 * s);
+    ctx.fillStyle = tipColor;
+    ctx.shadowColor = tipColor;
+    ctx.shadowBlur = 8 * s;
     ctx.beginPath();
-    ctx.arc(canvasW() / 2 - halfW, y - poleH, tip, 0, Math.PI * 2);
-    ctx.arc(canvasW() / 2 + halfW, y - poleH, tip, 0, Math.PI * 2);
+    ctx.arc(cx - halfW, y - poleH, tip, 0, Math.PI * 2);
+    ctx.arc(cx + halfW, y - poleH, tip, 0, Math.PI * 2);
     ctx.fill();
+    ctx.shadowBlur = 0;
   }
 }
 
@@ -544,51 +576,111 @@ function drawObstacle(o) {
   const s = projScale(Math.max(0, o.z));
   const x = projX(LANE_OFFSETS[o.lane], Math.max(0, o.z));
   const y = projY(Math.max(0, o.z));
+  const t = performance.now() / 1000;
 
   ctx.save();
   ctx.translate(x, y);
-  // shadow
+
+  // ground shadow with slight glow
   ctx.fillStyle = "rgba(0,0,0,0.55)";
   ctx.beginPath();
-  ctx.ellipse(0, 8 * s, 38 * s, 8 * s, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 8 * s, 42 * s, 9 * s, 0, 0, Math.PI * 2);
   ctx.fill();
 
   if (o.kind === "barrier") {
-    const wd = 90 * s, hd = 32 * s;
-    ctx.fillStyle = "#ff5577";
-    roundRect(-wd / 2, -hd, wd, hd, 4 * s);
-    ctx.fill();
-    ctx.fillStyle = "#fff";
-    for (let i = -wd / 2; i < wd / 2; i += 18 * s) {
-      ctx.beginPath();
-      ctx.moveTo(i, -hd);
-      ctx.lineTo(i + 10 * s, -hd);
-      ctx.lineTo(i + 18 * s, 0);
-      ctx.lineTo(i + 8 * s, 0);
-      ctx.closePath();
-      ctx.fill();
-    }
-    // legs
-    ctx.fillStyle = "#222";
-    ctx.fillRect(-wd / 2 + 2 * s, 0, 4 * s, 6 * s);
-    ctx.fillRect(wd / 2 - 6 * s, 0, 4 * s, 6 * s);
-  } else {
-    // crate
-    const wd = 70 * s, hd = 70 * s;
-    const grad = ctx.createLinearGradient(0, -hd, 0, 0);
-    grad.addColorStop(0, "#ffb547");
-    grad.addColorStop(1, "#a85e0a");
-    ctx.fillStyle = grad;
-    roundRect(-wd / 2, -hd, wd, hd, 6 * s);
-    ctx.fill();
-    ctx.strokeStyle = "rgba(0,0,0,0.45)";
-    ctx.lineWidth = 2 * s;
+    // Hover hex barrier — magenta neon edges, dark core, pulsing.
+    const wd = 96 * s, hd = 34 * s;
+    const pulse = 0.7 + 0.3 * Math.sin(t * 3 + o.z * 0.01);
+
+    // soft glow halo
+    ctx.fillStyle = `rgba(255, 60, 200, ${0.35 * pulse})`;
     ctx.beginPath();
-    ctx.moveTo(-wd / 2 + 4 * s, -hd + 4 * s);
-    ctx.lineTo(wd / 2 - 4 * s, -4 * s);
-    ctx.moveTo(wd / 2 - 4 * s, -hd + 4 * s);
-    ctx.lineTo(-wd / 2 + 4 * s, -4 * s);
+    ctx.ellipse(0, -hd / 2, wd / 1.6, hd / 1.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // body (hex prism front face)
+    const bodyGrad = ctx.createLinearGradient(0, -hd, 0, 0);
+    bodyGrad.addColorStop(0, "#1a0820");
+    bodyGrad.addColorStop(1, "#321538");
+    ctx.fillStyle = bodyGrad;
+    ctx.beginPath();
+    ctx.moveTo(-wd / 2 + 8 * s, -hd);
+    ctx.lineTo(wd / 2 - 8 * s, -hd);
+    ctx.lineTo(wd / 2, -hd / 2);
+    ctx.lineTo(wd / 2 - 8 * s, 0);
+    ctx.lineTo(-wd / 2 + 8 * s, 0);
+    ctx.lineTo(-wd / 2, -hd / 2);
+    ctx.closePath();
+    ctx.fill();
+
+    // neon edge
+    ctx.strokeStyle = `rgba(255, 80, 220, ${0.85 * pulse})`;
+    ctx.shadowColor = "#ff3cb6";
+    ctx.shadowBlur = 10 * s;
+    ctx.lineWidth = 2 * s;
     ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // warning chevron in the middle
+    ctx.fillStyle = `rgba(255, 230, 250, ${0.85 * pulse})`;
+    ctx.beginPath();
+    ctx.moveTo(-10 * s, -hd / 2 - 4 * s);
+    ctx.lineTo(0, -hd / 2 + 2 * s);
+    ctx.lineTo(10 * s, -hd / 2 - 4 * s);
+    ctx.lineTo(6 * s, -hd / 2 - 4 * s);
+    ctx.lineTo(0, -hd / 2 - 1 * s);
+    ctx.lineTo(-6 * s, -hd / 2 - 4 * s);
+    ctx.closePath();
+    ctx.fill();
+  } else {
+    // Floating cyan crystal — diamond-prism with rim glow.
+    const sz = 56 * s;
+    const pulse = 0.65 + 0.35 * Math.sin(t * 2.5 + o.z * 0.008);
+    const cy = -sz - 6 * s + Math.sin(t * 3 + o.z * 0.02) * 3 * s;
+
+    // halo
+    ctx.fillStyle = `rgba(0, 240, 255, ${0.3 * pulse})`;
+    ctx.beginPath();
+    ctx.ellipse(0, cy + sz / 2, sz * 0.85, sz * 0.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // crystal body
+    const cGrad = ctx.createLinearGradient(0, cy, 0, cy + sz);
+    cGrad.addColorStop(0, "#a8f4ff");
+    cGrad.addColorStop(0.4, "#3ed0ff");
+    cGrad.addColorStop(1, "#0c4a8a");
+    ctx.fillStyle = cGrad;
+    ctx.beginPath();
+    ctx.moveTo(0, cy);
+    ctx.lineTo(sz / 2, cy + sz / 2);
+    ctx.lineTo(0, cy + sz);
+    ctx.lineTo(-sz / 2, cy + sz / 2);
+    ctx.closePath();
+    ctx.fill();
+
+    // facet highlight
+    ctx.fillStyle = "rgba(255,255,255,0.45)";
+    ctx.beginPath();
+    ctx.moveTo(0, cy + 3 * s);
+    ctx.lineTo(sz / 4, cy + sz / 2);
+    ctx.lineTo(0, cy + sz - 3 * s);
+    ctx.lineTo(-2 * s, cy + sz / 2);
+    ctx.closePath();
+    ctx.fill();
+
+    // rim
+    ctx.strokeStyle = "rgba(0, 240, 255, 0.8)";
+    ctx.shadowColor = "#00f0ff";
+    ctx.shadowBlur = 12 * s;
+    ctx.lineWidth = 1.5 * s;
+    ctx.beginPath();
+    ctx.moveTo(0, cy);
+    ctx.lineTo(sz / 2, cy + sz / 2);
+    ctx.lineTo(0, cy + sz);
+    ctx.lineTo(-sz / 2, cy + sz / 2);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.shadowBlur = 0;
   }
   ctx.restore();
 }
@@ -596,22 +688,42 @@ function drawObstacle(o) {
 function drawCoin(c) {
   const s = projScale(Math.max(0, c.z));
   const x = projX(LANE_OFFSETS[c.lane], Math.max(0, c.z));
-  const y = projY(Math.max(0, c.z)) - 18 * s;
-  const t = performance.now() / 200;
-  const sx = Math.abs(Math.cos(t + c.z * 0.01));
-  const r = 14 * s;
+  const y = projY(Math.max(0, c.z)) - 24 * s;
+  const t = performance.now() / 1000;
+  const pulse = 0.7 + 0.3 * Math.sin(t * 4 + c.z * 0.03);
+  const r = 13 * s;
 
   ctx.save();
   ctx.translate(x, y);
-  ctx.fillStyle = "#ffd24a";
+
+  // outer halo
+  ctx.fillStyle = `rgba(0, 240, 255, ${0.18 * pulse})`;
   ctx.beginPath();
-  ctx.ellipse(0, 0, r * sx, r, 0, 0, Math.PI * 2);
+  ctx.arc(0, 0, r * 2.6, 0, Math.PI * 2);
   ctx.fill();
-  ctx.strokeStyle = "rgba(0,0,0,0.3)";
-  ctx.lineWidth = 1.5 * s;
-  ctx.stroke();
-  ctx.fillStyle = "rgba(255,255,255,0.65)";
-  ctx.fillRect(-2 * sx, -5 * s, 4 * sx, 10 * s);
+
+  // mid halo
+  ctx.fillStyle = `rgba(0, 240, 255, ${0.45 * pulse})`;
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 1.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // core orb with gradient
+  const grad = ctx.createRadialGradient(-r * 0.3, -r * 0.3, r * 0.1, 0, 0, r);
+  grad.addColorStop(0, "#ffffff");
+  grad.addColorStop(0.5, "#a8f4ff");
+  grad.addColorStop(1, "#0aa5d4");
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fill();
+
+  // glint
+  ctx.fillStyle = "rgba(255,255,255,0.9)";
+  ctx.beginPath();
+  ctx.arc(-r * 0.35, -r * 0.35, r * 0.22, 0, Math.PI * 2);
+  ctx.fill();
+
   ctx.restore();
 }
 
@@ -620,120 +732,218 @@ function drawKart(w, h) {
   const cx = projX(wx, 0);
   const cy = projY(0);
 
-  // steering tilt: based on lane transition direction
   const dirSign = state.laneTargetIndex - state.laneIndex; // -1, 0, +1
-  const tilt = dirSign * (1 - state.laneTransition) * 0.18;
-  const bob = Math.sin(performance.now() / 110) * 1.2;
+  const tilt = dirSign * (1 - state.laneTransition) * 0.16;
+  const bob = Math.sin(performance.now() / 130) * 1.5;
+  const hoverY = -2 + Math.sin(performance.now() / 280) * 1.2;
+  const t = performance.now() / 1000;
 
   ctx.save();
   ctx.translate(cx, cy + bob);
+
+  // hover air-cushion glow under the kart (drawn before body, on the ground).
+  const cushion = ctx.createRadialGradient(0, 24, 4, 0, 24, 70);
+  cushion.addColorStop(0, "rgba(0, 240, 255, 0.65)");
+  cushion.addColorStop(0.6, "rgba(0, 240, 255, 0.2)");
+  cushion.addColorStop(1, "rgba(0, 240, 255, 0)");
+  ctx.fillStyle = cushion;
+  ctx.beginPath();
+  ctx.ellipse(0, 26, 64, 16, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // soft pink shadow accent
+  ctx.fillStyle = "rgba(255, 60, 200, 0.18)";
+  ctx.beginPath();
+  ctx.ellipse(0, 28, 70, 9, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.translate(0, hoverY);
   ctx.rotate(tilt);
 
-  // ground shadow
-  ctx.fillStyle = "rgba(0,0,0,0.55)";
+  // ----- Lower chassis (dark plate visible from behind, slight tapering) -----
+  ctx.fillStyle = "#0a0d1a";
   ctx.beginPath();
-  ctx.ellipse(0, 30, 58, 12, 0, 0, Math.PI * 2);
+  ctx.moveTo(-48, 24);
+  ctx.lineTo(48, 24);
+  ctx.lineTo(38, 8);
+  ctx.lineTo(-38, 8);
+  ctx.closePath();
   ctx.fill();
 
-  // Rear wheels
-  ctx.fillStyle = "#0c0e16";
-  roundRect(-52, -2, 16, 30, 4); ctx.fill();
-  roundRect(36, -2, 16, 30, 4); ctx.fill();
-  // wheel rims
-  ctx.fillStyle = "#4ad8ff";
+  // side fins (thin angled slats)
+  ctx.fillStyle = "#1a2348";
   ctx.beginPath();
-  ctx.arc(-44, 14, 4, 0, Math.PI * 2);
-  ctx.arc(44, 14, 4, 0, Math.PI * 2);
+  ctx.moveTo(-50, 22); ctx.lineTo(-38, 4); ctx.lineTo(-30, 6); ctx.lineTo(-44, 24);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(50, 22); ctx.lineTo(38, 4); ctx.lineTo(30, 6); ctx.lineTo(44, 24);
+  ctx.closePath();
   ctx.fill();
 
-  // Body — trapezoid (wider at rear because we look from behind)
-  const bodyGrad = ctx.createLinearGradient(0, -38, 0, 24);
-  bodyGrad.addColorStop(0, "#79e7ff");
-  bodyGrad.addColorStop(0.6, "#2192ff");
-  bodyGrad.addColorStop(1, "#0e3da8");
+  // ----- Main body (white pearl with cyan/magenta accent) -----
+  const bodyGrad = ctx.createLinearGradient(0, -34, 0, 12);
+  bodyGrad.addColorStop(0, "#f4f7ff");
+  bodyGrad.addColorStop(0.55, "#cfd6ee");
+  bodyGrad.addColorStop(1, "#5b6796");
   ctx.fillStyle = bodyGrad;
   ctx.beginPath();
-  ctx.moveTo(-46, 24);
-  ctx.lineTo(46, 24);
-  ctx.lineTo(34, -32);
-  ctx.lineTo(-34, -32);
+  ctx.moveTo(-40, 10);
+  ctx.lineTo(40, 10);
+  ctx.lineTo(32, -26);
+  ctx.lineTo(20, -34);
+  ctx.lineTo(-20, -34);
+  ctx.lineTo(-32, -26);
   ctx.closePath();
   ctx.fill();
 
-  // Body trim (highlight on top edge)
-  ctx.strokeStyle = "rgba(255,255,255,0.35)";
-  ctx.lineWidth = 2;
+  // accent stripe along center, glowing cyan
+  const stripe = ctx.createLinearGradient(0, -34, 0, 10);
+  stripe.addColorStop(0, "rgba(0, 240, 255, 0.85)");
+  stripe.addColorStop(1, "rgba(0, 240, 255, 0.0)");
+  ctx.fillStyle = stripe;
   ctx.beginPath();
-  ctx.moveTo(-32, -30);
-  ctx.lineTo(32, -30);
+  ctx.moveTo(-4, -34);
+  ctx.lineTo(4, -34);
+  ctx.lineTo(3, 10);
+  ctx.lineTo(-3, 10);
+  ctx.closePath();
+  ctx.fill();
+
+  // body outline (subtle dark)
+  ctx.strokeStyle = "rgba(10, 14, 30, 0.55)";
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(-40, 10);
+  ctx.lineTo(-32, -26);
+  ctx.lineTo(-20, -34);
+  ctx.lineTo(20, -34);
+  ctx.lineTo(32, -26);
+  ctx.lineTo(40, 10);
   ctx.stroke();
 
-  // Rear bumper
-  ctx.fillStyle = "#0a0e1a";
-  roundRect(-48, 18, 96, 10, 3);
-  ctx.fill();
-  // tail lights
-  ctx.fillStyle = "#ff5577";
+  // top highlight
+  ctx.strokeStyle = "rgba(255,255,255,0.6)";
+  ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.arc(-36, 23, 3.5, 0, Math.PI * 2);
-  ctx.arc(36, 23, 3.5, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.moveTo(-18, -32);
+  ctx.lineTo(18, -32);
+  ctx.stroke();
 
-  // Cockpit / windshield
-  const wsGrad = ctx.createLinearGradient(0, -32, 0, -8);
-  wsGrad.addColorStop(0, "rgba(180, 230, 255, 0.85)");
-  wsGrad.addColorStop(1, "rgba(40, 80, 140, 0.7)");
-  ctx.fillStyle = wsGrad;
+  // ----- Cockpit canopy (smoked glass with cyan reflection) -----
+  const canopy = ctx.createLinearGradient(0, -30, 0, -6);
+  canopy.addColorStop(0, "rgba(8, 16, 36, 0.85)");
+  canopy.addColorStop(1, "rgba(20, 36, 64, 0.65)");
+  ctx.fillStyle = canopy;
   ctx.beginPath();
-  ctx.moveTo(-26, -8);
-  ctx.lineTo(26, -8);
-  ctx.lineTo(20, -30);
-  ctx.lineTo(-20, -30);
+  ctx.moveTo(-22, -8);
+  ctx.lineTo(22, -8);
+  ctx.lineTo(16, -30);
+  ctx.lineTo(-16, -30);
   ctx.closePath();
   ctx.fill();
 
-  // Driver helmet
-  ctx.fillStyle = "#ff5577";
+  // canopy reflection sheen
+  ctx.fillStyle = "rgba(0, 240, 255, 0.35)";
   ctx.beginPath();
-  ctx.arc(0, -22, 12, Math.PI, 2 * Math.PI);
+  ctx.moveTo(-18, -28);
+  ctx.lineTo(0, -28);
+  ctx.lineTo(-4, -10);
+  ctx.lineTo(-20, -10);
+  ctx.closePath();
   ctx.fill();
-  ctx.fillStyle = "rgba(255,255,255,0.9)";
+  ctx.fillStyle = "rgba(255,255,255,0.55)";
   ctx.beginPath();
-  ctx.arc(0, -22, 12, Math.PI * 1.05, Math.PI * 1.45);
+  ctx.moveTo(8, -28);
+  ctx.lineTo(14, -28);
+  ctx.lineTo(10, -12);
+  ctx.lineTo(4, -12);
+  ctx.closePath();
   ctx.fill();
 
-  // Exhaust glow (boost)
-  const boostA = Math.min(1, (state.speed - 1) / 2);
-  if (boostA > 0.05) {
-    ctx.fillStyle = `rgba(74, 216, 255, ${0.45 * boostA})`;
+  // ----- Driver helmet showing through canopy -----
+  ctx.fillStyle = "#0f1730";
+  ctx.beginPath();
+  ctx.arc(0, -20, 11, Math.PI, 2 * Math.PI);
+  ctx.fill();
+  // visor
+  ctx.fillStyle = "rgba(0, 240, 255, 0.85)";
+  ctx.beginPath();
+  ctx.arc(0, -20, 9, Math.PI * 1.1, Math.PI * 1.9);
+  ctx.fill();
+
+  // ----- Rear bumper / lights -----
+  ctx.fillStyle = "#06080f";
+  roundRect(-44, 8, 88, 8, 3);
+  ctx.fill();
+
+  // tail light strip (magenta + cyan)
+  const tail = ctx.createLinearGradient(-44, 12, 44, 12);
+  tail.addColorStop(0, "rgba(0, 240, 255, 0.95)");
+  tail.addColorStop(0.5, "rgba(255, 60, 200, 0.95)");
+  tail.addColorStop(1, "rgba(0, 240, 255, 0.95)");
+  ctx.fillStyle = tail;
+  roundRect(-40, 11, 80, 2.5, 1);
+  ctx.fill();
+
+  // ----- Thruster outlets (twin) -----
+  for (const sx of [-22, 22]) {
+    ctx.fillStyle = "#06080f";
     ctx.beginPath();
-    ctx.ellipse(-22, 30, 6, 9 + boostA * 8, 0, 0, Math.PI * 2);
-    ctx.ellipse(22, 30, 6, 9 + boostA * 8, 0, 0, Math.PI * 2);
+    ctx.ellipse(sx, 18, 8, 5, 0, 0, Math.PI * 2);
     ctx.fill();
+    // inner glow (varies with speed)
+    const boost = Math.min(1, (state.speed - 1) / 2);
+    const flick = 0.7 + 0.3 * Math.sin(t * 22 + sx);
+    ctx.fillStyle = `rgba(255, 60, 200, ${0.7 + 0.25 * boost})`;
+    ctx.beginPath();
+    ctx.ellipse(sx, 18, 5 * flick, 3 * flick, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = `rgba(255, 230, 250, ${0.85})`;
+    ctx.beginPath();
+    ctx.ellipse(sx, 18, 2.5, 1.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // exhaust plume
+    if (boost > 0.05 || true) {
+      const len = 14 + boost * 22;
+      const plume = ctx.createLinearGradient(sx, 22, sx, 22 + len);
+      plume.addColorStop(0, "rgba(255, 60, 200, 0.7)");
+      plume.addColorStop(0.6, "rgba(0, 240, 255, 0.35)");
+      plume.addColorStop(1, "rgba(0, 240, 255, 0)");
+      ctx.fillStyle = plume;
+      ctx.beginPath();
+      ctx.ellipse(sx, 22 + len / 2, 4, len / 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
   ctx.restore();
-
-  // Speed lines
   drawSpeedLines(w, h);
 }
 
 function drawSpeedLines(w, h) {
   const intensity = Math.min(1, (state.speed - 1) / 2);
-  if (intensity < 0.1) return;
-  ctx.strokeStyle = `rgba(255,255,255,${0.18 * intensity})`;
-  ctx.lineWidth = 1;
+  if (intensity < 0.05) return;
   const cx = w / 2;
-  const cy = horizonY();
+  const cy = horizonY() + 10;
   const t = performance.now();
-  for (let i = 0; i < 10; i++) {
-    const ang = (i / 10) * Math.PI * 2 + (t * 0.0006);
-    const len = 60 + 80 * intensity + (i % 3) * 30;
-    const sx = cx + Math.cos(ang) * 100;
-    const sy = cy + Math.sin(ang) * 60;
+  for (let i = 0; i < 14; i++) {
+    const ang = (i / 14) * Math.PI * 2 + (t * 0.0004 + i * 0.13);
+    const r0 = 90 + (i % 4) * 20;
+    const len = 50 + 110 * intensity + (i % 3) * 28;
+    const sx = cx + Math.cos(ang) * r0;
+    const sy = cy + Math.sin(ang) * (r0 * 0.55);
+    const ex = sx + Math.cos(ang) * len;
+    const ey = sy + Math.sin(ang) * len * 0.65;
+    const grad = ctx.createLinearGradient(sx, sy, ex, ey);
+    grad.addColorStop(0, `rgba(255,255,255,${0.22 * intensity})`);
+    grad.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(sx, sy);
-    ctx.lineTo(sx + Math.cos(ang) * len, sy + Math.sin(ang) * len);
+    ctx.lineTo(ex, ey);
     ctx.stroke();
   }
 }
@@ -743,17 +953,32 @@ function drawSideHints(w, h) {
   if (lane === 0) return;
   ctx.save();
   if (lane === -1) {
-    const g = ctx.createLinearGradient(0, 0, w * 0.25, 0);
-    g.addColorStop(0, "rgba(74,216,255,0.35)");
-    g.addColorStop(1, "rgba(74,216,255,0)");
+    const g = ctx.createLinearGradient(0, 0, w * 0.28, 0);
+    g.addColorStop(0, "rgba(0, 240, 255, 0.38)");
+    g.addColorStop(1, "rgba(0, 240, 255, 0)");
     ctx.fillStyle = g;
-    ctx.fillRect(0, 0, w * 0.25, h);
+    ctx.fillRect(0, 0, w * 0.28, h);
+    // arrow
+    ctx.fillStyle = "rgba(0, 240, 255, 0.7)";
+    ctx.beginPath();
+    ctx.moveTo(20, h / 2);
+    ctx.lineTo(46, h / 2 - 18);
+    ctx.lineTo(46, h / 2 + 18);
+    ctx.closePath();
+    ctx.fill();
   } else {
-    const g = ctx.createLinearGradient(w, 0, w * 0.75, 0);
-    g.addColorStop(0, "rgba(74,216,255,0.35)");
-    g.addColorStop(1, "rgba(74,216,255,0)");
+    const g = ctx.createLinearGradient(w, 0, w * 0.72, 0);
+    g.addColorStop(0, "rgba(255, 60, 200, 0.38)");
+    g.addColorStop(1, "rgba(255, 60, 200, 0)");
     ctx.fillStyle = g;
-    ctx.fillRect(w * 0.75, 0, w * 0.25, h);
+    ctx.fillRect(w * 0.72, 0, w * 0.28, h);
+    ctx.fillStyle = "rgba(255, 60, 200, 0.7)";
+    ctx.beginPath();
+    ctx.moveTo(w - 20, h / 2);
+    ctx.lineTo(w - 46, h / 2 - 18);
+    ctx.lineTo(w - 46, h / 2 + 18);
+    ctx.closePath();
+    ctx.fill();
   }
   ctx.restore();
 }

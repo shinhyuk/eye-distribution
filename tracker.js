@@ -31,7 +31,10 @@ class GazeTracker {
     this.smoothedRatio = 0.5;
     this.eyesOpen = true;
     this.faceVisible = false;
-    this.calibration = { left: 0.35, center: 0.5, right: 0.65 };
+    // When user looks LEFT (their own left), the iris in the un-mirrored
+    // camera image drifts toward the image's RIGHT, so the eye ratio is
+    // HIGHER. So "left" anchor sits above center, "right" sits below.
+    this.calibration = { left: 0.62, center: 0.5, right: 0.38 };
     this.listeners = new Set();
   }
 
