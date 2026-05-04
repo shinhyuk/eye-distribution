@@ -298,20 +298,27 @@ html, body {
   font-weight: 600;
   letter-spacing: 0.06em;
   cursor: pointer;
-  transition: transform 100ms ease, background 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
-}
-
-.btn:hover:not(:disabled),
-.btn:active:not(:disabled) {
-  background: rgba(0, 240, 255, 0.12);
-  border-color: rgba(0, 240, 255, 0.4);
-  box-shadow: 0 0 0 4px rgba(0, 240, 255, 0.08);
-  transform: translateY(-1px);
+  transition: transform 100ms ease, filter 160ms ease, box-shadow 160ms ease;
 }
 
 .btn:disabled {
   opacity: 0.35;
   cursor: not-allowed;
+}
+
+/* Hover only on devices that actually support it (avoid sticky hover on iOS). */
+@media (hover: hover) {
+  .btn:hover:not(:disabled) {
+    background: rgba(0, 240, 255, 0.12);
+    border-color: rgba(0, 240, 255, 0.4);
+    box-shadow: 0 0 0 4px rgba(0, 240, 255, 0.08);
+    transform: translateY(-1px);
+  }
+}
+
+.btn:active:not(:disabled) {
+  filter: brightness(1.1);
+  transform: translateY(0);
 }
 
 .btn.primary {
@@ -326,12 +333,22 @@ html, body {
     inset 0 1px 0 rgba(255, 255, 255, 0.55);
 }
 
-.btn.primary:hover:not(:disabled) {
-  filter: brightness(1.12);
-  box-shadow:
-    0 12px 30px rgba(0, 240, 255, 0.4),
-    0 6px 16px rgba(255, 60, 200, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+@media (hover: hover) {
+  .btn.primary:hover:not(:disabled) {
+    /* Re-assert gradient so the generic .btn:hover background doesn't win. */
+    background: linear-gradient(135deg, var(--accent) 0%, #6f6fff 50%, var(--accent-2) 100%);
+    border-color: transparent;
+    filter: brightness(1.12);
+    box-shadow:
+      0 12px 30px rgba(0, 240, 255, 0.4),
+      0 6px 16px rgba(255, 60, 200, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  }
+}
+
+.btn.primary:active:not(:disabled) {
+  background: linear-gradient(135deg, var(--accent) 0%, #6f6fff 50%, var(--accent-2) 100%);
+  filter: brightness(1.18);
 }
 
 .hint {
