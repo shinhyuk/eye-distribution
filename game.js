@@ -320,9 +320,9 @@ function spawnObstacle() {
 }
 function spawnCoinTrail() {
   const lane = Math.random() < 0.5 ? 0 : 1;
-  const count = 5;
+  const count = 4;
   for (let i = 0; i < count; i++) {
-    state.coins.push({ z: SPAWN_Z + i * 90, lane, collected: false });
+    state.coins.push({ z: SPAWN_Z + i * 130, lane, collected: false });
   }
 }
 
@@ -602,106 +602,144 @@ function drawObstacle(o) {
   ctx.save();
   ctx.translate(x, y);
 
-  // ground shadow with slight glow
-  ctx.fillStyle = "rgba(0,0,0,0.55)";
+  // ground shadow
+  ctx.fillStyle = "rgba(0,0,0,0.6)";
   ctx.beginPath();
-  ctx.ellipse(0, 8 * s, 42 * s, 9 * s, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 6 * s, 46 * s, 9 * s, 0, 0, Math.PI * 2);
   ctx.fill();
 
   if (o.kind === "barrier") {
-    // Hover hex barrier — magenta neon edges, dark core, pulsing.
-    const wd = 96 * s, hd = 34 * s;
-    const pulse = 0.7 + 0.3 * Math.sin(t * 3 + o.z * 0.01);
+    // Low magenta hex barrier — clearly DANGER (red/magenta family).
+    const wd = 116 * s, hd = 42 * s;
+    const pulse = 0.75 + 0.25 * Math.sin(t * 4 + o.z * 0.01);
 
-    // soft glow halo
-    ctx.fillStyle = `rgba(255, 60, 200, ${0.35 * pulse})`;
+    // outer halo
+    ctx.fillStyle = `rgba(255, 60, 90, ${0.4 * pulse})`;
     ctx.beginPath();
-    ctx.ellipse(0, -hd / 2, wd / 1.6, hd / 1.4, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, -hd / 2, wd / 1.5, hd / 1.2, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // body (hex prism front face)
+    // hex body
     const bodyGrad = ctx.createLinearGradient(0, -hd, 0, 0);
-    bodyGrad.addColorStop(0, "#1a0820");
-    bodyGrad.addColorStop(1, "#321538");
+    bodyGrad.addColorStop(0, "#3a0814");
+    bodyGrad.addColorStop(1, "#5a0a28");
     ctx.fillStyle = bodyGrad;
     ctx.beginPath();
-    ctx.moveTo(-wd / 2 + 8 * s, -hd);
-    ctx.lineTo(wd / 2 - 8 * s, -hd);
+    ctx.moveTo(-wd / 2 + 10 * s, -hd);
+    ctx.lineTo(wd / 2 - 10 * s, -hd);
     ctx.lineTo(wd / 2, -hd / 2);
-    ctx.lineTo(wd / 2 - 8 * s, 0);
-    ctx.lineTo(-wd / 2 + 8 * s, 0);
+    ctx.lineTo(wd / 2 - 10 * s, 0);
+    ctx.lineTo(-wd / 2 + 10 * s, 0);
     ctx.lineTo(-wd / 2, -hd / 2);
     ctx.closePath();
     ctx.fill();
 
     // neon edge
-    ctx.strokeStyle = `rgba(255, 80, 220, ${0.85 * pulse})`;
-    ctx.shadowColor = "#ff3cb6";
-    ctx.shadowBlur = 10 * s;
-    ctx.lineWidth = 2 * s;
+    ctx.strokeStyle = `rgba(255, 70, 110, ${0.95 * pulse})`;
+    ctx.shadowColor = "#ff3050";
+    ctx.shadowBlur = 14 * s;
+    ctx.lineWidth = 2.4 * s;
     ctx.stroke();
     ctx.shadowBlur = 0;
 
-    // warning chevron in the middle
-    ctx.fillStyle = `rgba(255, 230, 250, ${0.85 * pulse})`;
+    // diagonal hazard stripes (red/white)
+    ctx.save();
     ctx.beginPath();
-    ctx.moveTo(-10 * s, -hd / 2 - 4 * s);
-    ctx.lineTo(0, -hd / 2 + 2 * s);
-    ctx.lineTo(10 * s, -hd / 2 - 4 * s);
-    ctx.lineTo(6 * s, -hd / 2 - 4 * s);
-    ctx.lineTo(0, -hd / 2 - 1 * s);
-    ctx.lineTo(-6 * s, -hd / 2 - 4 * s);
+    ctx.moveTo(-wd / 2 + 10 * s, -hd);
+    ctx.lineTo(wd / 2 - 10 * s, -hd);
+    ctx.lineTo(wd / 2, -hd / 2);
+    ctx.lineTo(wd / 2 - 10 * s, 0);
+    ctx.lineTo(-wd / 2 + 10 * s, 0);
+    ctx.lineTo(-wd / 2, -hd / 2);
     ctx.closePath();
+    ctx.clip();
+    ctx.fillStyle = "rgba(255, 230, 230, 0.85)";
+    const stripeStep = 14 * s;
+    for (let xx = -wd; xx < wd; xx += stripeStep * 2) {
+      ctx.beginPath();
+      ctx.moveTo(xx, -hd);
+      ctx.lineTo(xx + stripeStep, -hd);
+      ctx.lineTo(xx + stripeStep + hd, 0);
+      ctx.lineTo(xx + hd, 0);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+
+    // glowing warning bulb on top
+    ctx.fillStyle = `rgba(255, 200, 220, ${0.85 * pulse})`;
+    ctx.shadowColor = "#ff3050";
+    ctx.shadowBlur = 16 * s;
+    ctx.beginPath();
+    ctx.arc(0, -hd - 4 * s, 4.5 * s, 0, Math.PI * 2);
     ctx.fill();
+    ctx.shadowBlur = 0;
   } else {
-    // Floating cyan crystal — diamond-prism with rim glow.
-    const sz = 56 * s;
-    const pulse = 0.65 + 0.35 * Math.sin(t * 2.5 + o.z * 0.008);
-    const cy = -sz - 6 * s + Math.sin(t * 3 + o.z * 0.02) * 3 * s;
+    // Tall warning pylon — red/orange chevron column. Clearly DANGER.
+    const wd = 70 * s, hd = 110 * s;
+    const pulse = 0.7 + 0.3 * Math.sin(t * 3 + o.z * 0.01);
+    const cy = -hd;
 
     // halo
-    ctx.fillStyle = `rgba(0, 240, 255, ${0.3 * pulse})`;
+    ctx.fillStyle = `rgba(255, 110, 60, ${0.42 * pulse})`;
     ctx.beginPath();
-    ctx.ellipse(0, cy + sz / 2, sz * 0.85, sz * 0.4, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, cy + hd * 0.5, wd * 0.85, hd * 0.55, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // crystal body
-    const cGrad = ctx.createLinearGradient(0, cy, 0, cy + sz);
-    cGrad.addColorStop(0, "#a8f4ff");
-    cGrad.addColorStop(0.4, "#3ed0ff");
-    cGrad.addColorStop(1, "#0c4a8a");
-    ctx.fillStyle = cGrad;
+    // tapered cone body (wider at base)
+    const grad = ctx.createLinearGradient(0, cy, 0, 0);
+    grad.addColorStop(0, "#ffb247");
+    grad.addColorStop(0.45, "#ff5b3c");
+    grad.addColorStop(1, "#5a0a14");
+    ctx.fillStyle = grad;
     ctx.beginPath();
-    ctx.moveTo(0, cy);
-    ctx.lineTo(sz / 2, cy + sz / 2);
-    ctx.lineTo(0, cy + sz);
-    ctx.lineTo(-sz / 2, cy + sz / 2);
+    ctx.moveTo(-wd * 0.32, cy);
+    ctx.lineTo(wd * 0.32, cy);
+    ctx.lineTo(wd / 2, 0);
+    ctx.lineTo(-wd / 2, 0);
     ctx.closePath();
     ctx.fill();
 
-    // facet highlight
-    ctx.fillStyle = "rgba(255,255,255,0.45)";
+    // chevron warning stripes (white reflective bands)
+    ctx.fillStyle = "rgba(255, 245, 235, 0.92)";
+    for (let i = 0; i < 3; i++) {
+      const yMid = cy + ((i + 0.5) / 3) * hd;
+      const tH = 6 * s;
+      const halfW = wd * (0.32 + 0.18 * (i + 0.5) / 3);
+      ctx.beginPath();
+      ctx.moveTo(-halfW, yMid + tH);
+      ctx.lineTo(0, yMid - tH);
+      ctx.lineTo(halfW, yMid + tH);
+      ctx.lineTo(halfW * 0.65, yMid + tH);
+      ctx.lineTo(0, yMid - tH * 0.3);
+      ctx.lineTo(-halfW * 0.65, yMid + tH);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // top warning beacon
+    ctx.fillStyle = `rgba(255, 90, 60, ${0.85 + 0.15 * pulse})`;
+    ctx.shadowColor = "#ff5a3c";
+    ctx.shadowBlur = 20 * s;
     ctx.beginPath();
-    ctx.moveTo(0, cy + 3 * s);
-    ctx.lineTo(sz / 4, cy + sz / 2);
-    ctx.lineTo(0, cy + sz - 3 * s);
-    ctx.lineTo(-2 * s, cy + sz / 2);
-    ctx.closePath();
+    ctx.arc(0, cy - 4 * s, 6 * s, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = "rgba(255, 230, 220, 0.95)";
+    ctx.beginPath();
+    ctx.arc(0, cy - 4 * s, 2.5 * s, 0, Math.PI * 2);
     ctx.fill();
 
-    // rim
-    ctx.strokeStyle = "rgba(0, 240, 255, 0.8)";
-    ctx.shadowColor = "#00f0ff";
-    ctx.shadowBlur = 12 * s;
-    ctx.lineWidth = 1.5 * s;
+    // outline
+    ctx.strokeStyle = `rgba(255, 80, 70, ${0.9 * pulse})`;
+    ctx.lineWidth = 1.6 * s;
     ctx.beginPath();
-    ctx.moveTo(0, cy);
-    ctx.lineTo(sz / 2, cy + sz / 2);
-    ctx.lineTo(0, cy + sz);
-    ctx.lineTo(-sz / 2, cy + sz / 2);
+    ctx.moveTo(-wd * 0.32, cy);
+    ctx.lineTo(wd * 0.32, cy);
+    ctx.lineTo(wd / 2, 0);
+    ctx.lineTo(-wd / 2, 0);
     ctx.closePath();
     ctx.stroke();
-    ctx.shadowBlur = 0;
   }
   ctx.restore();
 }
@@ -709,43 +747,79 @@ function drawObstacle(o) {
 function drawCoin(c) {
   const s = projScale(Math.max(0, c.z));
   const x = projX(LANE_OFFSETS[c.lane], Math.max(0, c.z));
-  const y = projY(Math.max(0, c.z)) - 24 * s;
+  const y = projY(Math.max(0, c.z)) - 28 * s;
   const t = performance.now() / 1000;
   const pulse = 0.7 + 0.3 * Math.sin(t * 4 + c.z * 0.03);
-  const r = 13 * s;
+  // Spinning ratio: simulate a coin rotating around vertical axis.
+  const spin = Math.abs(Math.cos(t * 3 + c.z * 0.012));
+  const r = 17 * s;
+  const rx = Math.max(r * 0.18, r * spin);
 
   ctx.save();
   ctx.translate(x, y);
 
-  // outer halo
-  ctx.fillStyle = `rgba(0, 240, 255, ${0.18 * pulse})`;
+  // outer warm halo
+  ctx.fillStyle = `rgba(255, 200, 60, ${0.22 * pulse})`;
   ctx.beginPath();
-  ctx.arc(0, 0, r * 2.6, 0, Math.PI * 2);
+  ctx.arc(0, 0, r * 2.8, 0, Math.PI * 2);
   ctx.fill();
 
   // mid halo
-  ctx.fillStyle = `rgba(0, 240, 255, ${0.45 * pulse})`;
+  ctx.fillStyle = `rgba(255, 215, 90, ${0.55 * pulse})`;
   ctx.beginPath();
-  ctx.arc(0, 0, r * 1.5, 0, Math.PI * 2);
+  ctx.arc(0, 0, r * 1.45, 0, Math.PI * 2);
   ctx.fill();
 
-  // core orb with gradient
-  const grad = ctx.createRadialGradient(-r * 0.3, -r * 0.3, r * 0.1, 0, 0, r);
-  grad.addColorStop(0, "#ffffff");
-  grad.addColorStop(0.5, "#a8f4ff");
-  grad.addColorStop(1, "#0aa5d4");
+  // gold ring (outer disk)
+  const grad = ctx.createLinearGradient(-rx, -r, rx, r);
+  grad.addColorStop(0, "#fff3a8");
+  grad.addColorStop(0.5, "#ffd24a");
+  grad.addColorStop(1, "#a86b08");
   ctx.fillStyle = grad;
   ctx.beginPath();
-  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.ellipse(0, 0, rx, r, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // glint
-  ctx.fillStyle = "rgba(255,255,255,0.9)";
+  // inner face (slightly smaller, brighter ring)
+  ctx.fillStyle = "#ffe26b";
   ctx.beginPath();
-  ctx.arc(-r * 0.35, -r * 0.35, r * 0.22, 0, Math.PI * 2);
+  ctx.ellipse(0, 0, rx * 0.78, r * 0.78, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // star symbol on coin face (only when facing camera)
+  if (spin > 0.45) {
+    ctx.fillStyle = "rgba(120, 70, 0, 0.85)";
+    drawStar(0, 0, 5, r * 0.45 * (rx / r), r * 0.2 * (rx / r));
+    ctx.fill();
+  }
+
+  // edge ring
+  ctx.strokeStyle = "rgba(120, 70, 0, 0.9)";
+  ctx.lineWidth = 1.2 * s;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, rx, r, 0, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // top glint
+  ctx.fillStyle = "rgba(255,255,255,0.85)";
+  ctx.beginPath();
+  ctx.ellipse(-rx * 0.35, -r * 0.45, rx * 0.18, r * 0.12, 0, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.restore();
+}
+
+function drawStar(cx, cy, points, outer, inner) {
+  ctx.beginPath();
+  for (let i = 0; i < points * 2; i++) {
+    const r = i % 2 === 0 ? outer : inner;
+    const a = (i / (points * 2)) * Math.PI * 2 - Math.PI / 2;
+    const x = cx + Math.cos(a) * r;
+    const y = cy + Math.sin(a) * r;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
 }
 
 function drawKart(w, h) {
