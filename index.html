@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Eye Subway - 눈으로 즐기는 서브웨이 서퍼즈</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <header class="hud">
+      <div class="hud-left">
+        <div class="stat"><span class="label">SCORE</span><span id="score">0</span></div>
+        <div class="stat"><span class="label">BEST</span><span id="best">0</span></div>
+        <div class="stat"><span class="label">SPEED</span><span id="speed">1.0x</span></div>
+      </div>
+      <div class="hud-right">
+        <div class="cam-wrap">
+          <video id="webcam" playsinline muted autoplay></video>
+          <canvas id="overlay"></canvas>
+          <div id="gaze-indicator">
+            <div class="gaze-bar"><div id="gaze-dot"></div></div>
+            <div id="gaze-label">CENTER</div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="stage">
+      <canvas id="game"></canvas>
+
+      <div id="start-screen" class="overlay-screen">
+        <div class="panel">
+          <h1>EYE SUBWAY</h1>
+          <p class="tagline">눈동자를 좌우로 움직여 캐릭터를 조종하세요</p>
+          <ol class="howto">
+            <li>웹캠 권한을 허용합니다</li>
+            <li>화면 정면을 바라보고 <b>보정(Calibrate)</b>을 누른 뒤 안내에 따릅니다</li>
+            <li>좌/우로 시선을 옮겨 차선을 변경하고 장애물을 피하세요</li>
+          </ol>
+          <div class="buttons">
+            <button id="btn-calibrate" class="btn" disabled>보정 시작</button>
+            <button id="btn-start" class="btn primary" disabled>게임 시작</button>
+          </div>
+          <p class="hint">키보드 ← → 또는 A / D 키로도 조작할 수 있습니다.</p>
+          <p id="status" class="status">웹캠을 준비 중...</p>
+        </div>
+      </div>
+
+      <div id="gameover-screen" class="overlay-screen hidden">
+        <div class="panel">
+          <h2>GAME OVER</h2>
+          <p>점수 <span id="final-score">0</span></p>
+          <button id="btn-retry" class="btn primary">다시 도전</button>
+        </div>
+      </div>
+
+      <div id="calibrate-screen" class="overlay-screen hidden">
+        <div class="panel">
+          <h2 id="cal-title">보정</h2>
+          <p id="cal-instruction">화면 중앙을 바라보세요</p>
+          <div class="cal-targets">
+            <div class="cal-target" data-target="left">●</div>
+            <div class="cal-target" data-target="center">●</div>
+            <div class="cal-target" data-target="right">●</div>
+          </div>
+          <button id="btn-cal-capture" class="btn primary">현재 시선 저장</button>
+          <button id="btn-cal-cancel" class="btn">취소</button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="game.js"></script>
+</body>
+</html>
