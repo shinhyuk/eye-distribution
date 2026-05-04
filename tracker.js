@@ -205,7 +205,7 @@ class GazeTracker {
 
   getLane() {
     const n = this.getNormalizedRatio();
-    const TH = 0.35;
+    const TH = 0.22;
     if (!this.faceVisible) return 0;
     if (n > TH) return 1;   // right
     if (n < -TH) return -1; // left

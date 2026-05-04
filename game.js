@@ -77,6 +77,13 @@ function canvasH() { return els.canvas.clientHeight; }
 let trackerReady = false;
 let trackerStarting = null;
 
+// Has the user successfully calibrated this session? (Loaded values count.)
+let calibrationDone = false;
+
+function refreshStartGate() {
+  els.btnStart.disabled = !calibrationDone;
+}
+
 async function ensureTracker() {
   if (trackerReady) return true;
   if (trackerStarting) return trackerStarting;
@@ -85,9 +92,13 @@ async function ensureTracker() {
       els.status.textContent = "웹캠 권한을 허용해 주세요...";
       await tracker.start({ video: els.webcam, overlay: els.overlay });
       const hadCal = tracker.loadCalibration();
-      els.status.textContent = hadCal
-        ? "이전 보정값 사용 중. 다시 보정하면 더 정확해요."
-        : "보정을 한 번 진행하면 더 정확해집니다.";
+      if (hadCal) {
+        calibrationDone = true;
+        els.status.textContent = "이전 보정값을 불러왔어요. 바로 시작하거나 재보정하세요.";
+      } else {
+        els.status.textContent = "‘보정 시작’을 먼저 진행해 주세요.";
+      }
+      refreshStartGate();
       trackerReady = true;
       return true;
     } catch (e) {
@@ -101,8 +112,8 @@ async function ensureTracker() {
   return trackerStarting;
 }
 
-els.status.textContent = "‘게임 시작’을 누르면 웹캠 권한 요청이 뜹니다.";
-els.btnStart.disabled = false;
+els.status.textContent = "‘보정 시작’을 먼저 누르면 카메라 권한이 요청됩니다.";
+els.btnStart.disabled = true;
 els.btnCalibrate.disabled = false;
 
 tracker.on(({ lane, norm, faceVisible }) => {
@@ -151,7 +162,9 @@ els.btnCalCapture.addEventListener("click", () => {
   if (calStep >= CAL_STEPS.length) {
     tracker.saveCalibration();
     els.calibrateScreen.classList.add("hidden");
-    els.status.textContent = "보정 완료! 게임을 시작하세요.";
+    calibrationDone = true;
+    refreshStartGate();
+    els.status.textContent = "보정 완료! 이제 게임을 시작할 수 있어요.";
   } else {
     updateCalUI();
   }
@@ -160,6 +173,11 @@ els.btnCalCapture.addEventListener("click", () => {
 // ----- Start / restart -----
 els.btnStart.addEventListener("click", async () => {
   try { await ensureTracker(); } catch { return; }
+  if (!calibrationDone) {
+    els.status.textContent = "먼저 ‘보정 시작’을 진행해 주세요.";
+    openCalibration();
+    return;
+  }
   els.startScreen.classList.add("hidden");
   startGame();
 });
@@ -199,7 +217,7 @@ function gameOver() {
 }
 
 // ----- Input -----
-const HOLD_TO_SWITCH_MS = 80;
+const HOLD_TO_SWITCH_MS = 25;
 function tryMoveLane(dir) {
   const target = Math.max(0, Math.min(NUM_LANES - 1, state.laneTargetIndex + dir));
   if (target !== state.laneTargetIndex) {
@@ -239,32 +257,31 @@ function update(dt) {
     state.inputHoldTime = 0;
   }
 
-  state.laneTransition = Math.min(1, state.laneTransition + dt / 180);
+  state.laneTransition = Math.min(1, state.laneTransition + dt / 130);
 
-  // Speed ramps up with score.
-  state.speed = 1.0 + Math.min(2.5, state.score / 700);
+  // Easy ramp: gentle baseline, soft top.
+  state.speed = 1.0 + Math.min(1.4, state.score / 1400);
   els.speed.textContent = state.speed.toFixed(1) + "x";
 
-  const baseScroll = 0.6;
+  const baseScroll = 0.4;
   const scrollDelta = baseScroll * state.speed * dt;
   state.scrollZ += scrollDelta;
   state.score += scrollDelta * 0.05;
   els.score.textContent = Math.floor(state.score);
 
-  // Move all world objects toward the camera.
   for (const o of state.obstacles) o.z -= scrollDelta;
   for (const c of state.coins) c.z -= scrollDelta;
 
-  // Spawn obstacles (one lane only — guarantees a free lane in 2-lane mode).
+  // Spawn obstacles less frequently for easier flow.
   state.spawnTimer -= dt;
   if (state.spawnTimer <= 0) {
     spawnObstacle();
-    state.spawnTimer = 760 / state.speed;
+    state.spawnTimer = 1300 / state.speed;
   }
   state.coinTimer -= dt;
   if (state.coinTimer <= 0) {
     spawnCoinTrail();
-    state.coinTimer = 1300 / state.speed;
+    state.coinTimer = 1500 / state.speed;
   }
 
   // Cull what passed the camera.
@@ -293,7 +310,11 @@ function update(dt) {
 }
 
 function spawnObstacle() {
-  const lane = Math.random() < 0.5 ? 0 : 1;
+  // 65% chance to keep the same lane as the most recent obstacle so the
+  // player can rest in the free lane instead of switching every spawn.
+  let lane = Math.random() < 0.5 ? 0 : 1;
+  const last = state.obstacles[state.obstacles.length - 1];
+  if (last && Math.random() < 0.65) lane = last.lane;
   const kind = Math.random() < 0.4 ? "barrier" : "block";
   state.obstacles.push({ z: SPAWN_Z, lane, kind });
 }

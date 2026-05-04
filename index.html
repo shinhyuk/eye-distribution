@@ -34,8 +34,8 @@
           <h1>EYE KART</h1>
           <p class="tagline">시선을 좌/우로 옮겨 카트의 차선을 바꾸세요</p>
           <ol class="howto">
-            <li>웹캠 권한을 허용합니다</li>
-            <li>정면을 보고 <b>보정(Calibrate)</b>을 눌러 좌·중앙·우를 한 번씩 응시</li>
+            <li><b>보정 시작</b>을 눌러 화면 양쪽 끝의 점을 차례로 응시</li>
+            <li>보정이 끝나면 <b>게임 시작</b> 버튼이 활성화됩니다</li>
             <li>2차선 트랙에서 시선을 좌/우로 흘려 장애물을 피하세요</li>
           </ol>
           <div class="buttons">
@@ -55,17 +55,19 @@
         </div>
       </div>
 
-      <div id="calibrate-screen" class="overlay-screen hidden">
-        <div class="panel">
+      <div id="calibrate-screen" class="overlay-screen hidden cal-overlay">
+        <div class="cal-targets-layer">
+          <div class="cal-target" data-target="left">●</div>
+          <div class="cal-target" data-target="center">●</div>
+          <div class="cal-target" data-target="right">●</div>
+        </div>
+        <div class="panel cal-panel">
           <h2 id="cal-title">보정</h2>
-          <p id="cal-instruction">화면 중앙을 바라보세요</p>
-          <div class="cal-targets">
-            <div class="cal-target" data-target="left">●</div>
-            <div class="cal-target" data-target="center">●</div>
-            <div class="cal-target" data-target="right">●</div>
+          <p id="cal-instruction">빛나는 점을 응시한 뒤 ‘저장’을 누르세요</p>
+          <div class="buttons">
+            <button id="btn-cal-cancel" class="btn">취소</button>
+            <button id="btn-cal-capture" class="btn primary">현재 시선 저장</button>
           </div>
-          <button id="btn-cal-capture" class="btn primary">현재 시선 저장</button>
-          <button id="btn-cal-cancel" class="btn">취소</button>
         </div>
       </div>
     </main>
