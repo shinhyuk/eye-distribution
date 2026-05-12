@@ -1,0 +1,446 @@
+:root {
+  --bg-0: #06081a;
+  --bg-1: #0d1130;
+  --bg-2: #161b40;
+  --accent: #00f0ff;
+  --accent-2: #ff3cb6;
+  --accent-3: #b89dff;
+  --danger: #ff3cb6;
+  --text: #eef3ff;
+  --muted: #8a9bcf;
+  --panel: rgba(8, 11, 28, 0.72);
+  --hairline: rgba(170, 200, 255, 0.14);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background:
+    radial-gradient(circle at 80% 0%, rgba(255, 60, 200, 0.18), transparent 55%),
+    radial-gradient(circle at 0% 100%, rgba(0, 240, 255, 0.16), transparent 50%),
+    radial-gradient(ellipse at top, #1d2363 0%, #06081a 70%);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Pretendard", "Apple SD Gothic Neo", system-ui, sans-serif;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#app {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* HUD */
+.hud {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 14px 18px;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.hud-left {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.stat {
+  position: relative;
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: 14px;
+  padding: 8px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 86px;
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 6px 20px rgba(0, 0, 0, 0.35);
+}
+
+.stat::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(120deg, rgba(0, 240, 255, 0.18), transparent 35%, transparent 65%, rgba(255, 60, 200, 0.12));
+  mix-blend-mode: screen;
+  opacity: 0.6;
+}
+
+.stat .label {
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.stat span:not(.label) {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 12px rgba(0, 240, 255, 0.35);
+}
+
+/* Webcam preview */
+.cam-wrap {
+  position: relative;
+  width: 220px;
+  height: 165px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  box-shadow:
+    0 0 0 1px rgba(0, 240, 255, 0.18),
+    0 14px 30px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  background: #000;
+}
+
+#webcam, #overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1); /* mirror */
+}
+
+#overlay {
+  pointer-events: none;
+}
+
+#gaze-indicator {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gaze-bar {
+  position: relative;
+  height: 6px;
+  background: linear-gradient(90deg, rgba(0, 240, 255, 0.25), rgba(255, 255, 255, 0.08), rgba(255, 60, 200, 0.25));
+  border-radius: 3px;
+  overflow: visible;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+#gaze-dot {
+  position: absolute;
+  top: -3px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #ffffff, var(--accent) 60%);
+  box-shadow: 0 0 12px var(--accent), 0 0 4px #fff;
+  left: 50%;
+  transform: translateX(-50%);
+  transition: left 80ms linear;
+}
+
+#gaze-label {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* Stage */
+.stage {
+  flex: 1;
+  position: relative;
+  margin: 0 18px 18px;
+  border-radius: 20px;
+  overflow: hidden;
+  background: linear-gradient(180deg, #0c1230 0%, #060914 100%);
+  border: 1px solid var(--hairline);
+  box-shadow:
+    0 0 0 1px rgba(0, 240, 255, 0.08),
+    0 30px 60px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+#game {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Overlay screens */
+.overlay-screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(6, 9, 20, 0.65);
+  backdrop-filter: blur(8px);
+  z-index: 5;
+}
+
+.overlay-screen.hidden {
+  display: none;
+}
+
+.panel {
+  position: relative;
+  background:
+    linear-gradient(160deg, rgba(29, 37, 86, 0.55), rgba(10, 14, 30, 0.88)),
+    rgba(8, 11, 28, 0.6);
+  border: 1px solid var(--hairline);
+  border-radius: 24px;
+  padding: 30px 34px;
+  max-width: 460px;
+  text-align: center;
+  backdrop-filter: blur(22px) saturate(140%);
+  -webkit-backdrop-filter: blur(22px) saturate(140%);
+  box-shadow:
+    0 0 0 1px rgba(0, 240, 255, 0.1),
+    0 30px 80px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.panel::before {
+  content: "";
+  position: absolute;
+  top: -40%;
+  left: -20%;
+  width: 80%;
+  height: 80%;
+  background: radial-gradient(circle, rgba(0, 240, 255, 0.22), transparent 60%);
+  filter: blur(20px);
+  pointer-events: none;
+}
+.panel::after {
+  content: "";
+  position: absolute;
+  bottom: -40%;
+  right: -20%;
+  width: 80%;
+  height: 80%;
+  background: radial-gradient(circle, rgba(255, 60, 200, 0.18), transparent 60%);
+  filter: blur(20px);
+  pointer-events: none;
+}
+
+.panel > * { position: relative; z-index: 1; }
+
+.panel h1 {
+  font-size: 42px;
+  margin: 0 0 8px;
+  letter-spacing: 0.06em;
+  font-weight: 900;
+  background: linear-gradient(120deg, var(--accent) 0%, #ffffff 50%, var(--accent-2) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 6px 30px rgba(0, 240, 255, 0.25);
+}
+
+.panel h2 {
+  font-size: 28px;
+  margin: 0 0 10px;
+  letter-spacing: 0.08em;
+  background: linear-gradient(90deg, var(--accent-2), var(--accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-weight: 800;
+}
+
+.panel p { color: var(--muted); margin: 6px 0; }
+
+.tagline { font-size: 14px; }
+
+.howto {
+  text-align: left;
+  margin: 14px auto 18px;
+  padding-left: 22px;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.btn {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  padding: 11px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: transform 100ms ease, filter 160ms ease, box-shadow 160ms ease;
+}
+
+.btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Hover only on devices that actually support it (avoid sticky hover on iOS). */
+@media (hover: hover) {
+  .btn:hover:not(:disabled) {
+    background: rgba(0, 240, 255, 0.12);
+    border-color: rgba(0, 240, 255, 0.4);
+    box-shadow: 0 0 0 4px rgba(0, 240, 255, 0.08);
+    transform: translateY(-1px);
+  }
+}
+
+.btn:active:not(:disabled) {
+  filter: brightness(1.1);
+  transform: translateY(0);
+}
+
+.btn.primary {
+  background: linear-gradient(135deg, var(--accent) 0%, #6f6fff 50%, var(--accent-2) 100%);
+  border: none;
+  color: #050818;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  box-shadow:
+    0 8px 24px rgba(0, 240, 255, 0.28),
+    0 4px 12px rgba(255, 60, 200, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+@media (hover: hover) {
+  .btn.primary:hover:not(:disabled) {
+    /* Re-assert gradient so the generic .btn:hover background doesn't win. */
+    background: linear-gradient(135deg, var(--accent) 0%, #6f6fff 50%, var(--accent-2) 100%);
+    border-color: transparent;
+    filter: brightness(1.12);
+    box-shadow:
+      0 12px 30px rgba(0, 240, 255, 0.4),
+      0 6px 16px rgba(255, 60, 200, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  }
+}
+
+.btn.primary:active:not(:disabled) {
+  background: linear-gradient(135deg, var(--accent) 0%, #6f6fff 50%, var(--accent-2) 100%);
+  filter: brightness(1.18);
+}
+
+.hint {
+  font-size: 12px;
+  margin-top: 14px;
+  color: var(--muted);
+}
+
+.status {
+  font-size: 12px;
+  margin-top: 10px;
+  color: var(--accent);
+  min-height: 16px;
+  letter-spacing: 0.02em;
+}
+
+/* Calibration */
+.cal-overlay { background: rgba(4, 6, 18, 0.92); }
+
+.cal-targets-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.cal-target {
+  position: absolute;
+  top: 38%;
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 22px;
+  background: rgba(0, 240, 255, 0.06);
+  color: rgba(0, 240, 255, 0.35);
+  border: 1px solid var(--hairline);
+  transition: all 250ms cubic-bezier(.2,.7,.3,1);
+}
+
+.cal-target[data-target="left"]   { left: calc(env(safe-area-inset-left, 0px) + 14px); }
+.cal-target[data-target="right"]  { right: calc(env(safe-area-inset-right, 0px) + 14px); }
+.cal-target[data-target="center"] { left: 50%; transform: translateX(-50%); }
+.cal-target[data-target="center"].active { transform: translateX(-50%) scale(1.3); }
+
+.cal-target.active {
+  background: radial-gradient(circle, rgba(255, 60, 200, 0.55), rgba(255, 60, 200, 0.05) 70%);
+  color: #ffffff;
+  border-color: rgba(255, 60, 200, 0.7);
+  transform: scale(1.3);
+  box-shadow: 0 0 30px rgba(255, 60, 200, 0.65);
+  animation: cal-pulse 1.4s ease-in-out infinite;
+}
+
+.cal-target.done {
+  color: var(--accent);
+  background: rgba(0, 240, 255, 0.18);
+  border-color: rgba(0, 240, 255, 0.55);
+  box-shadow: 0 0 14px rgba(0, 240, 255, 0.4);
+}
+
+@keyframes cal-pulse {
+  0%, 100% { box-shadow: 0 0 24px rgba(255, 60, 200, 0.5); }
+  50%      { box-shadow: 0 0 44px rgba(255, 60, 200, 0.85); }
+}
+
+.cal-panel {
+  position: absolute;
+  bottom: max(28px, env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 20px 26px;
+  width: min(440px, calc(100% - 32px));
+}
+.cal-panel .buttons { margin-top: 8px; }
+
+@media (max-width: 720px) {
+  .hud { padding: 8px 10px; gap: 8px; }
+  .cam-wrap { width: 130px; height: 98px; }
+  .stat { padding: 5px 9px; min-width: 60px; border-radius: 9px; }
+  .stat .label { font-size: 9px; }
+  .stat span:not(.label) { font-size: 16px; }
+  .panel { padding: 22px 20px; }
+  .panel h1 { font-size: 28px; }
+  .stage { margin: 0 8px 8px; }
+  .howto { font-size: 13px; }
+}
+
+@media (max-width: 420px) {
+  .cam-wrap { width: 108px; height: 80px; }
+  #gaze-label { font-size: 9px; }
+  .stat { min-width: 52px; padding: 4px 7px; }
+  .stat span:not(.label) { font-size: 14px; }
+}
